@@ -4,610 +4,688 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loups-Garous Assistant</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- React UMD (Architecture Test.html) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel Standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #1c1917; color: white; overflow: hidden; }
         h1, h2, h3, .font-serif { font-family: 'Crimson Text', serif; }
         .banned-cross { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 3rem; font-weight: bold; pointer-events: none; }
         .required-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; background-color: #22c55e; border-radius: 50%; box-shadow: 0 0 5px #22c55e; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #1c1917; }
-        ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 3px; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-bounce-slow { animation: bounce 3s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(-5%); } 50% { transform: translateY(5%); } }
     </style>
-    <script>
-        // Mouchard d'erreurs global
-        window.onerror = function(msg, url, line, col, error) {
-            const app = document.getElementById('app');
-            if (app) {
-                app.innerHTML = `
-                    <div class="p-6 bg-red-900 text-white h-screen flex flex-col justify-center items-center text-center">
-                        <h1 class="text-3xl mb-4">😵 Oups !</h1>
-                        <p class="font-bold text-xl mb-2">Une erreur est survenue (v2.2)</p>
-                        <div class="bg-black p-4 rounded text-left font-mono text-xs overflow-auto w-full max-w-md border border-red-500">
-                            <p class="text-red-300">Message : ${msg}</p>
-                            <p class="text-stone-400">Ligne : ${line}</p>
-                            <p class="text-stone-500 mt-2">${error ? error.stack : ''}</p>
-                        </div>
-                        <button onclick="location.reload()" class="mt-8 px-6 py-3 bg-white text-red-900 font-bold rounded">Réessayer</button>
-                    </div>
-                `;
-            }
-            return false;
-        };
-    </script>
 </head>
 <body>
-    <div id="app" class="h-screen flex flex-col">
-        <div class="flex-1 flex flex-col items-center justify-center text-stone-500 gap-4">
-            <div class="animate-spin text-4xl">⏳</div>
-            <div>Chargement v2.2 (Corrective)...</div>
-        </div>
-    </div>
+    <div id="root" class="h-screen w-screen"></div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                console.log("App v2.2 Initializing...");
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
 
-                // --- DATA ---
-                const ROLES = [
-                  { id: 'cupid', name: 'Cupidon', type: 'VILLAGER', imageSrc: 'images/v-cupidon.png' },
-                  { id: 'lovers', name: 'Les Amoureux', type: 'SPECIAL', imageSrc: 'images/v-cupidon.png' },
-                  { id: 'seer', name: 'La Voyante', type: 'VILLAGER', imageSrc: 'images/v-voyante.png' },
-                  { id: 'simple_wolf', name: 'Simple Loup-Garou', type: 'WOLF', imageSrc: 'images/l-simple.png' },
-                  { id: 'infect_father', name: 'Infect Père des Loups', type: 'WOLF', imageSrc: 'images/l-infect.png' },
-                  { id: 'big_bad_wolf', name: 'Grand Méchant Loup', type: 'WOLF', imageSrc: 'images/l-grand.png' },
-                  { id: 'witch', name: 'La Sorcière', type: 'VILLAGER', imageSrc: 'images/v-sorciere.png' },
-                  { id: 'hunter', name: 'Le Chasseur', type: 'VILLAGER', imageSrc: 'images/v-chasseur.png' },
-                  { id: 'sisters', name: 'Les Deux Sœurs', type: 'VILLAGER', imageSrc: 'images/v-soeurs.png' },
-                  { id: 'little_girl', name: 'La Petite Fille', type: 'VILLAGER', imageSrc: 'images/v-petitefille.png' },
-                  { id: 'fox', name: 'Le Renard', type: 'VILLAGER', imageSrc: 'images/v-renard.png' },
-                  { id: 'rusty_knight', name: 'Chevalier Épée Rouillée', type: 'VILLAGER', imageSrc: 'images/v-chevalier.png' },
-                  { id: 'elder', name: "L'Ancien", type: 'VILLAGER', imageSrc: 'images/v-ancien.png' },
-                  { id: 'bear_tamer', name: "Montreur d'Ours", type: 'VILLAGER', imageSrc: 'images/v-ours.png' },
-                  { id: 'simple_villager', name: 'Simple Villageois', type: 'VILLAGER', imageSrc: 'images/v-simple.png' },
-                  { id: 'wild_child', name: 'Enfant Sauvage', type: 'AMBIGUOUS', imageSrc: 'images/a-enfantsauvage.png' },
-                  { id: 'dog_wolf', name: 'Chien-Loup', type: 'AMBIGUOUS', imageSrc: 'images/a-chienloup.png' },
-                  { id: 'white_wolf', name: 'Loup-Garou Blanc', type: 'LONER', imageSrc: 'images/s-lgblanc.png' },
-                  { id: 'flute_player', name: 'Joueur de Flûte', type: 'LONER', imageSrc: 'images/s-flute.png' },
-                  { id: 'angel', name: "L'Ange", type: 'LONER', imageSrc: 'images/s-ange.png' }
-                ];
+        // --- DATA ---
+        const ROLES = [
+            { id: 'cupid', name: 'Cupidon', type: 'VILLAGER', imageSrc: 'images/v-cupidon.png' },
+            { id: 'lovers', name: 'Les Amoureux', type: 'SPECIAL', imageSrc: 'images/v-cupidon.png' },
+            { id: 'seer', name: 'La Voyante', type: 'VILLAGER', imageSrc: 'images/v-voyante.png' },
+            { id: 'simple_wolf', name: 'Simple Loup-Garou', type: 'WOLF', imageSrc: 'images/l-simple.png' },
+            { id: 'infect_father', name: 'Infect Père des Loups', type: 'WOLF', imageSrc: 'images/l-infect.png' },
+            { id: 'big_bad_wolf', name: 'Grand Méchant Loup', type: 'WOLF', imageSrc: 'images/l-grand.png' },
+            { id: 'witch', name: 'La Sorcière', type: 'VILLAGER', imageSrc: 'images/v-sorciere.png' },
+            { id: 'hunter', name: 'Le Chasseur', type: 'VILLAGER', imageSrc: 'images/v-chasseur.png' },
+            { id: 'sisters', name: 'Les Deux Sœurs', type: 'VILLAGER', imageSrc: 'images/v-soeurs.png' },
+            { id: 'little_girl', name: 'La Petite Fille', type: 'VILLAGER', imageSrc: 'images/v-petitefille.png' },
+            { id: 'fox', name: 'Le Renard', type: 'VILLAGER', imageSrc: 'images/v-renard.png' },
+            { id: 'rusty_knight', name: 'Chevalier Épée Rouillée', type: 'VILLAGER', imageSrc: 'images/v-chevalier.png' },
+            { id: 'elder', name: "L'Ancien", type: 'VILLAGER', imageSrc: 'images/v-ancien.png' },
+            { id: 'bear_tamer', name: "Montreur d'Ours", type: 'VILLAGER', imageSrc: 'images/v-ours.png' },
+            { id: 'simple_villager', name: 'Simple Villageois', type: 'VILLAGER', imageSrc: 'images/v-simple.png' },
+            { id: 'wild_child', name: 'Enfant Sauvage', type: 'AMBIGUOUS', imageSrc: 'images/a-enfantsauvage.png' },
+            { id: 'dog_wolf', name: 'Chien-Loup', type: 'AMBIGUOUS', imageSrc: 'images/a-chienloup.png' },
+            { id: 'white_wolf', name: 'Loup-Garou Blanc', type: 'LONER', imageSrc: 'images/s-lgblanc.png' },
+            { id: 'flute_player', name: 'Joueur de Flûte', type: 'LONER', imageSrc: 'images/s-flute.png' },
+            { id: 'angel', name: "L'Ange", type: 'LONER', imageSrc: 'images/s-ange.png' }
+        ];
 
-                // --- STATE ---
-                let state = {
-                    phase: 'SETUP',
-                    playerCount: 8,
-                    difficulty: 'MOYENNE',
-                    roleStatus: {},
-                    players: [],
-                    turn: 1,
-                    isDay: false,
-                    historyLog: [],
-                    storyStep: 0,
-                    currentSequence: [],
-                    nightKills: [],
-                    witchUsed: { life: false, death: false },
-                    infectUsed: false,
-                    elderLives: 2,
-                    powersLost: false,
-                    showDashboard: false,
-                    victory: null
-                };
+        // --- COMPONENTS ---
 
-                // --- CORE LOGIC ---
-                window.log = function(text) {
-                    state.historyLog.unshift(`[${state.isDay ? 'Jour' : 'Nuit'} ${state.turn}] ${text}`);
-                    render();
-                };
+        const RoleImg = ({ rid, size = "w-12 h-12" }) => {
+            const r = ROLES.find(x => x.id === rid);
+            if (!r) return null;
+            const shortName = r.name.substring(0, 2);
+            
+            // Fallback si l'image ne charge pas (géré par le navigateur)
+            return (
+                <div className="flex flex-col items-center">
+                    <img 
+                        src={r.imageSrc} 
+                        className={`${size} object-contain drop-shadow-md`}
+                        onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                    />
+                    <div className={`${size} bg-stone-700 rounded-full hidden items-center justify-center border border-stone-500 text-xs font-bold text-white`}>
+                        {shortName}
+                    </div>
+                </div>
+            );
+        };
 
-                window.getRole = function(id) { return ROLES.find(r => r.id === id); };
+        const App = () => {
+            // -- STATE --
+            const [phase, setPhase] = useState('SETUP'); // SETUP, REVIEW, GAME, VICTORY
+            const [playerCount, setPlayerCount] = useState(8);
+            const [difficulty, setDifficulty] = useState('MOYENNE');
+            const [roleStatus, setRoleStatus] = useState({}); // { [id]: 'NEUTRAL' | 'BANNED' | 'REQUIRED' }
+            
+            // Game State
+            const [players, setPlayers] = useState([]); // { uid, roleId, isAlive, isLover }
+            const [turn, setTurn] = useState(1);
+            const [isDay, setIsDay] = useState(false);
+            const [historyLog, setHistoryLog] = useState([]);
+            const [storyStep, setStoryStep] = useState(0);
+            const [nightKills, setNightKills] = useState([]);
+            const [witchUsed, setWitchUsed] = useState({ life: false, death: false });
+            const [infectUsed, setInfectUsed] = useState(false);
+            const [elderLives, setElderLives] = useState(2);
+            const [powersLost, setPowersLost] = useState(false);
+            
+            // UI State
+            const [showDashboard, setShowDashboard] = useState(false);
+            const [victory, setVictory] = useState(null);
 
-                window.killPlayer = function(uid, reason) {
-                    const p = state.players.find(x => x.uid === uid);
-                    if (!p || !p.isAlive) return;
-                    
-                    p.isAlive = false;
-                    const r = getRole(p.roleId);
+            // -- HELPERS --
 
-                    // Malédiction de l'Ancien
-                    if (p.roleId === 'elder' && reason === "Vote du Village") {
-                        state.powersLost = true;
-                        log("💀 L'Ancien est mort par le vote ! Les pouvoirs sont perdus !");
+            const log = (text) => {
+                setHistoryLog(prev => [`[${isDay ? 'Jour' : 'Nuit'} ${turn}] ${text}`, ...prev]);
+            };
+
+            const getRole = (rid) => ROLES.find(r => r.id === rid);
+
+            const checkVictory = () => {
+                const alive = players.filter(p => p.isAlive);
+                const wolves = alive.filter(p => getRole(p.roleId).type === 'WOLF' || p.roleId === 'white_wolf');
+                const villagers = alive.filter(p => getRole(p.roleId).type !== 'WOLF' && p.roleId !== 'white_wolf' && p.roleId !== 'flute_player' && p.roleId !== 'angel');
+                const lovers = alive.filter(p => p.isLover);
+                const angel = players.find(p => p.roleId === 'angel');
+
+                let win = null;
+                // Ange
+                if (angel && !angel.isAlive && turn === 1 && isDay) {
+                    win = { winner: "L'Ange", reason: "Il a réussi son suicide au premier tour !" };
+                }
+                // Amoureux
+                else if (lovers.length === 2 && alive.length === 2) {
+                    win = { winner: "Les Amoureux", reason: "Ils sont seuls au monde." };
+                }
+                // Loup Blanc
+                else if (wolves.length === 1 && wolves[0].roleId === 'white_wolf' && villagers.length === 0) {
+                    win = { winner: "Le Loup Blanc", reason: "Il est le dernier survivant." };
+                }
+                // Loups
+                else if (wolves.length > 0 && villagers.length === 0) {
+                    win = { winner: "Les Loups", reason: "Le village a été entièrement dévoré." };
+                }
+                // Villageois
+                else if (wolves.length === 0 && villagers.length > 0) {
+                    win = { winner: "Les Villageois", reason: "Tous les loups ont été éliminés." };
+                }
+
+                if (win) {
+                    setVictory(win);
+                    setPhase('VICTORY');
+                }
+            };
+
+            const killPlayer = (uid, reason) => {
+                const pIndex = players.findIndex(p => p.uid === uid);
+                if (pIndex === -1 || !players[pIndex].isAlive) return;
+
+                const newPlayers = [...players];
+                const p = newPlayers[pIndex];
+                p.isAlive = false;
+                const r = getRole(p.roleId);
+
+                // Logique Ancien
+                if (p.roleId === 'elder' && reason === 'Vote du Village') {
+                    setPowersLost(true);
+                    log("💀 L'Ancien est mort par le vote ! Tous les pouvoirs du village sont perdus !");
+                } else {
+                    log(`${r.name} est mort (${reason}).`);
+                }
+
+                // Logique Amoureux
+                if (p.isLover) {
+                    const loverIndex = newPlayers.findIndex(x => x.isLover && x.uid !== uid && x.isAlive);
+                    if (loverIndex !== -1) {
+                        newPlayers[loverIndex].isAlive = false;
+                        const lr = getRole(newPlayers[loverIndex].roleId);
+                        log(`💔 ${lr.name} meurt de chagrin !`);
+                    }
+                }
+
+                setPlayers(newPlayers);
+                
+                if (p.roleId === 'hunter') {
+                    alert("LE CHASSEUR EST MORT ! IL DOIT TIRER !");
+                    log("🔫 Le Chasseur tire avant de mourir.");
+                }
+
+                // On check la victoire après update state via useEffect ou callback, 
+                // ici on le fait un peu "dirty" mais ça marche car on a modifié la copie
+                // Pour être propre on le fera dans un useEffect dépendant de players, mais checkVictory a besoin du contexte
+                // On va le laisser pour le render suivant
+            };
+
+            // Effet pour checker la victoire quand les joueurs changent
+            useEffect(() => {
+                if (phase === 'GAME') checkVictory();
+            }, [players]);
+
+            const revivePlayer = (uid) => {
+                const newPlayers = players.map(p => p.uid === uid ? { ...p, isAlive: true } : p);
+                setPlayers(newPlayers);
+                const p = players.find(x => x.uid === uid);
+                log(`✨ ${getRole(p.roleId).name} a été ressuscité.`);
+            };
+
+            // --- GENERATION ---
+
+            const cycleRoleStatus = (rid) => {
+                setRoleStatus(prev => {
+                    const current = prev[rid] || 'NEUTRAL';
+                    const next = current === 'NEUTRAL' ? 'BANNED' : current === 'BANNED' ? 'REQUIRED' : 'NEUTRAL';
+                    return { ...prev, [rid]: next };
+                });
+            };
+
+            const generateGame = () => {
+                let roster = [];
+                const required = ROLES.filter(r => roleStatus[r.id] === 'REQUIRED' && r.id !== 'lovers');
+                const bannedIds = new Set(ROLES.filter(r => roleStatus[r.id] === 'BANNED').map(r => r.id));
+                bannedIds.add('lovers'); // Toujours exclu du tirage (c'est une condition, pas un rôle)
+
+                // 1. Ajouter les requis
+                required.forEach(r => {
+                    roster.push(r.id);
+                    if (r.id === 'sisters') roster.push(r.id); // Les sœurs vont par 2
+                });
+
+                if (roster.length > playerCount) {
+                    alert("Trop de rôles requis pour le nombre de joueurs !");
+                    return;
+                }
+
+                // 2. Quota Loups (approx 1/4)
+                const maxWolves = Math.max(1, Math.floor(playerCount / 4));
+                let currentWolves = roster.filter(rid => getRole(rid).type === 'WOLF').length;
+                const wolfPool = ROLES.filter(r => (r.type === 'WOLF' || r.id === 'white_wolf') && !bannedIds.has(r.id) && !roster.includes(r.id));
+
+                while (currentWolves < maxWolves && roster.length < playerCount) {
+                    if (wolfPool.length > 0 && Math.random() < (difficulty === 'FACILE' ? 0.2 : 0.6)) {
+                        const idx = Math.floor(Math.random() * wolfPool.length);
+                        roster.push(wolfPool[idx].id);
+                        wolfPool.splice(idx, 1);
+                    } else if (!bannedIds.has('simple_wolf')) {
+                        roster.push('simple_wolf');
+                    }
+                    currentWolves++;
+                }
+
+                // 3. Remplissage Spécial
+                const specialPool = ROLES.filter(r => r.type !== 'WOLF' && r.id !== 'white_wolf' && r.id !== 'simple_villager' && r.id !== 'lovers' && !bannedIds.has(r.id) && !roster.includes(r.id));
+                let specialCount = Math.floor((playerCount - roster.length) * (difficulty === 'FACILE' ? 0.3 : 0.7));
+
+                while (specialCount > 0 && specialPool.length > 0 && roster.length < playerCount) {
+                    const idx = Math.floor(Math.random() * specialPool.length);
+                    const role = specialPool[idx];
+                    if (role.id === 'sisters') {
+                        if (playerCount - roster.length >= 2) {
+                            roster.push('sisters', 'sisters');
+                            specialCount -= 2;
+                        }
                     } else {
-                        log(`${r.name} est mort (${reason}).`);
+                        roster.push(role.id);
+                        specialCount--;
                     }
+                    specialPool.splice(idx, 1);
+                }
 
-                    // Amoureux
-                    if (p.isLover) {
-                        const lover = state.players.find(x => x.isLover && x.uid !== uid && x.isAlive);
-                        if (lover) {
-                            const lr = getRole(lover.roleId);
-                            lover.isAlive = false;
-                            log(`💔 ${lr.name} meurt de chagrin !`);
-                        }
-                    }
-                    // Chasseur
-                    if (p.roleId === 'hunter') {
-                        alert("LE CHASSEUR EST MORT ! IL DOIT TIRER !");
-                        log("🔫 Le Chasseur tire avant de mourir.");
-                    }
-                    checkVictory();
-                    render();
-                };
+                // 4. Combler avec Simple Villageois
+                while (roster.length < playerCount) {
+                    roster.push('simple_villager');
+                }
 
-                window.revivePlayer = function(uid) {
-                    const p = state.players.find(x => x.uid === uid);
-                    if (p) {
-                        p.isAlive = true;
-                        log(`✨ ${getRole(p.roleId).name} a été ressuscité.`);
-                        render();
-                    }
-                };
+                // 5. Mélanger
+                for (let i = roster.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [roster[i], roster[j]] = [roster[j], roster[i]];
+                }
 
-                window.checkVictory = function() {
-                    const alive = state.players.filter(p => p.isAlive);
-                    const wolves = alive.filter(p => getRole(p.roleId).type === 'WOLF' || p.roleId === 'white_wolf');
-                    const villagers = alive.filter(p => getRole(p.roleId).type !== 'WOLF' && p.roleId !== 'white_wolf' && p.roleId !== 'flute_player' && p.roleId !== 'angel');
-                    const lovers = alive.filter(p => p.isLover);
-                    const angel = state.players.find(p => p.roleId === 'angel');
+                setPlayers(roster.map((rid, i) => ({
+                    uid: `${i}-${Date.now()}`,
+                    roleId: rid,
+                    isAlive: true,
+                    isLover: false
+                })));
+                setPhase('REVIEW');
+            };
 
-                    let win = null;
-                    if (angel && !angel.isAlive && state.turn === 1 && state.isDay) win = { winner: "L'Ange", reason: "Il a réussi son suicide !" };
-                    else if (lovers.length === 2 && alive.length === 2) win = { winner: "Les Amoureux", reason: "Seuls au monde." };
-                    else if (wolves.length === 1 && wolves[0].roleId === 'white_wolf' && villagers.length === 0) win = { winner: "Le Loup Blanc", reason: "Le dernier survivant." };
-                    else if (wolves.length > 0 && villagers.length === 0) win = { winner: "Les Loups", reason: "Le village est dévoré." };
-                    else if (wolves.length === 0 && villagers.length > 0) win = { winner: "Les Villageois", reason: "Les loups sont éliminés." };
+            const startGame = () => {
+                setTurn(1);
+                setIsDay(false);
+                setHistoryLog([]);
+                setNightKills([]);
+                setWitchUsed({ life: false, death: false });
+                setInfectUsed(false);
+                setElderLives(2);
+                setPowersLost(false);
+                
+                // Si l'Ange est là, on commence par le Jour (Vote)
+                const hasAngel = players.some(p => p.roleId === 'angel');
+                setIsDay(hasAngel);
+                
+                setPhase('GAME');
+                setStoryStep(0);
+            };
 
-                    if (win) {
-                        state.victory = win;
-                        state.phase = 'VICTORY';
-                    }
-                };
+            // --- GAME LOGIC ---
 
-                // --- GENERATOR ---
-                window.generateGame = function() {
-                    let roster = [];
-                    const required = ROLES.filter(r => state.roleStatus[r.id] === 'REQUIRED');
-                    const bannedIds = new Set(ROLES.filter(r => state.roleStatus[r.id] === 'BANNED').map(r => r.id));
-                    bannedIds.add('lovers');
+            const roleAlive = (rid) => players.some(p => p.roleId === rid && p.isAlive);
 
-                    required.forEach(r => {
-                        if (r.id !== 'lovers') {
-                            roster.push(r.id);
-                            if (r.id === 'sisters') roster.push(r.id);
-                        }
-                    });
-
-                    if (roster.length > state.playerCount) { alert("Trop de rôles requis !"); return; }
-
-                    const maxWolves = Math.max(1, Math.floor(state.playerCount / 4));
-                    let currentWolves = roster.filter(rid => getRole(rid)?.type === 'WOLF').length;
-                    const wolfPool = ROLES.filter(r => (r.type === 'WOLF' || r.id === 'white_wolf') && !bannedIds.has(r.id) && !roster.includes(r.id));
-
-                    while (currentWolves < maxWolves && roster.length < state.playerCount) {
-                        if (wolfPool.length > 0 && Math.random() < (state.difficulty === 'FACILE' ? 0.2 : 0.6)) {
-                            const idx = Math.floor(Math.random() * wolfPool.length);
-                            roster.push(wolfPool[idx].id);
-                            wolfPool.splice(idx, 1);
-                        } else if (!bannedIds.has('simple_wolf')) {
-                            roster.push('simple_wolf');
-                        }
-                        currentWolves++;
-                    }
-
-                    const specialPool = ROLES.filter(r => r.type !== 'WOLF' && r.id !== 'white_wolf' && r.id !== 'simple_villager' && r.id !== 'lovers' && !bannedIds.has(r.id) && !roster.includes(r.id));
-                    let specialCount = Math.floor((state.playerCount - roster.length) * (state.difficulty === 'FACILE' ? 0.3 : 0.7));
-
-                    while (specialCount > 0 && specialPool.length > 0 && roster.length < state.playerCount) {
-                        const idx = Math.floor(Math.random() * specialPool.length);
-                        const role = specialPool[idx];
-                        if (role.id === 'sisters') {
-                            if (state.playerCount - roster.length >= 2) { roster.push('sisters', 'sisters'); specialCount -= 2; }
-                        } else {
-                            roster.push(role.id);
-                            specialCount--;
-                        }
-                        specialPool.splice(idx, 1);
-                    }
-
-                    while (roster.length < state.playerCount) roster.push('simple_villager');
+            const currentSequence = useMemo(() => {
+                if (phase !== 'GAME') return [];
+                
+                const seq = [];
+                if (!isDay) {
+                    seq.push({ id: 'START_NIGHT', title: "La Nuit", text: "Le village s'endort...", image: "🌙" });
                     
-                    for (let i = roster.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [roster[i], roster[j]] = [roster[j], roster[i]];
+                    // Nuit 1 seulement
+                    if (turn === 1) {
+                        if (roleAlive('cupid')) seq.push({ type: 'CUPID', title: "Cupidon", text: "Cupidon se réveille. Il désigne 2 amoureux.", image: "💘" });
+                        seq.push({ id: 'LOVERS', title: "Les Amoureux", text: "Cupidon se rendort. Les Amoureux se réveillent, se reconnaissent et se rendorment.", image: "❤️" });
                     }
 
-                    state.players = roster.map((rid, i) => ({ uid: i + '-' + Date.now(), roleId: rid, isAlive: true, isLover: false }));
-                    state.phase = 'REVIEW';
-                    render();
-                };
-
-                // --- SEQUENCE ---
-                window.roleAlive = function(rid) { return state.players.some(p => p.roleId === rid && p.isAlive); };
-
-                window.buildSequences = function(t) {
-                    const seq = [];
-                    if (!state.isDay) {
-                        seq.push({ id: 'START', title: "La Nuit", text: "Le village s'endort...", image: "🌙" });
-                        if (t === 1 && roleAlive('cupid')) seq.push({ type: 'CUPID', title: "Cupidon", text: "Cupidon se réveille. Il désigne 2 amoureux.", image: "💘" });
-                        if (t === 1) seq.push({ id: 'LOVERS', title: "Les Amoureux", text: "Cupidon se rendort. Les Amoureux se réveillent et se reconnaissent.", image: "❤️" });
-                        if (roleAlive('seer') && !state.powersLost) seq.push({ id: 'SEER', title: "Voyante", text: "La Voyante se réveille. Elle désigne un joueur dont elle veut connaître l'identité.", image: "🔮" });
-                        seq.push({ type: 'WOLVES', title: "Les Loups", text: "La Voyante se rendort. Les Loups-Garous se réveillent et choisissent une victime.", image: "🐺" });
-                        if (roleAlive('infect_father') && !state.infectUsed) seq.push({ type: 'INFECT', title: "L'Infect Père", text: "L'Infect Père peut transformer la victime.", image: "🧟" });
-                        if (roleAlive('white_wolf') && t % 2 === 0) seq.push({ type: 'WHITE', title: "Loup Blanc", text: "Le Loup Blanc se réveille seul. Il peut tuer un loup.", image: "🌫️" });
-                        if (roleAlive('witch') && !state.powersLost && (!state.witchUsed.life || !state.witchUsed.death)) seq.push({ type: 'WITCH', title: "Sorcière", text: "Les Loups se rendorment. La Sorcière se réveille.", image: "🧙" });
-                        if (roleAlive('fox') && !state.powersLost) seq.push({ id: 'FOX', title: "Renard", text: "Le Renard se réveille. Il sonde un groupe de 3 joueurs.", image: "🦊" });
-                        if (roleAlive('flute_player')) seq.push({ id: 'FLUTE', title: "Flûte", text: "Le Joueur de Flûte se réveille. Il charme 2 joueurs.", image: "🎶" });
-                        seq.push({ id: 'END_NIGHT', title: "Fin Nuit", text: "Tout le monde se rendort...", image: "💤" });
-                    } else {
-                        seq.push({ type: 'REVEAL', title: "Réveil", text: "C'est le matin, le village se réveille !", image: "☀️" });
-                        seq.push({ id: 'DEBATE', title: "Débat", text: "Le village débat pour trouver les coupables.", image: "🗣️" });
-                        seq.push({ type: 'VOTE', title: "Vote", text: "Le village vote pour éliminer un suspect.", image: "⚰️" });
-                        seq.push({ id: 'END_DAY', title: "Fin Jour", text: "La nuit tombe sur le village...", image: "🌙" });
-                    }
-                    return seq;
-                };
-
-                window.nextStep = function() {
-                    if (state.storyStep < state.currentSequence.length - 1) {
-                        state.storyStep++;
-                    } else {
-                        if (state.isDay) {
-                            state.turn++;
-                            state.isDay = false;
-                        } else {
-                            state.isDay = true;
-                        }
-                        state.storyStep = 0;
-                        state.currentSequence = buildSequences(state.turn);
-                        state.nightKills = [];
-                    }
-                    render();
-                };
-
-                // --- RENDERERS ---
-                window.RoleImg = function(rid, size) {
-                    if (!size) size = 'w-12 h-12';
-                    const r = getRole(rid);
-                    if (!r) return '';
-                    // Utilisation de guillemets simples pour éviter les conflits dans les chaînes HTML
-                    return `<div class='flex flex-col items-center'>
-                        <img src='${r.imageSrc}' class='${size} object-contain drop-shadow-md' onerror='this.style.display="none";this.nextElementSibling.style.display="flex"'>
-                        <div class='${size} bg-stone-700 rounded-full flex items-center justify-center border border-stone-500 hidden text-xs font-bold text-white'>${r.name.substr(0,2)}</div>
-                    </div>`;
-                };
-
-                window.renderSetup = function() {
-                    const app = document.getElementById('app');
-                    app.innerHTML = `
-                        <div class="h-full bg-stone-900 overflow-y-auto p-4 pb-24 text-center">
-                            <h1 class="text-3xl text-red-600 font-serif uppercase tracking-widest mb-1">Thiercelieux</h1>
-                            <p class="text-stone-500 text-xs mb-6">Assistant MJ v2.2 (Corrective)</p>
-                            
-                            <div class="bg-stone-800 p-4 rounded-xl mb-4 border border-stone-700">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-amber-500 font-bold">Joueurs</span>
-                                    <span class="text-3xl font-serif">${state.playerCount}</span>
-                                </div>
-                                <input type="range" min="8" max="28" value="${state.playerCount}" oninput="state.playerCount=parseInt(this.value);render()" class="w-full accent-red-600">
-                            </div>
-
-                            <div class="flex gap-2 mb-6">
-                                ${['FACILE', 'MOYENNE', 'DIFFICILE'].map(d => 
-                                    `<button onclick="state.difficulty='${d}';render()" class="flex-1 py-3 rounded text-xs font-bold border border-stone-700 ${state.difficulty===d ? 'bg-red-700 text-white' : 'bg-stone-800 text-stone-500'}">${d}</button>`
-                                ).join('')}
-                            </div>
-
-                            <div class="grid grid-cols-3 gap-2">
-                                ${ROLES.filter(r => r.id !== 'lovers').map(r => {
-                                    const s = state.roleStatus[r.id] || 'NEUTRAL';
-                                    return `
-                                        <div onclick="cycleRoleStatus('${r.id}')" class="relative bg-stone-800 p-2 rounded border border-stone-700 flex flex-col items-center gap-1 ${s==='BANNED'?'bg-red-900/20 border-red-900':s==='REQUIRED'?'bg-green-900/20 border-green-600':''}">
-                                            ${RoleImg(r.id)}
-                                            <span class="text-[9px] font-bold leading-tight">${r.name}</span>
-                                            ${s==='BANNED' ? '<div class="banned-cross">×</div>' : ''}
-                                            ${s==='REQUIRED' ? '<div class="required-dot"></div>' : ''}
-                                        </div>
-                                    `
-                                }).join('')}
-                            </div>
-
-                            <div class="fixed bottom-0 left-0 w-full p-4 bg-gradient-to-t from-stone-950">
-                                <button onclick="generateGame()" class="w-full py-4 bg-red-700 text-white font-serif text-2xl font-bold rounded-xl shadow-xl">GÉNÉRER</button>
-                            </div>
-                        </div>
-                    `;
-                };
-
-                window.cycleRoleStatus = function(rid) {
-                    const s = state.roleStatus[rid] || 'NEUTRAL';
-                    state.roleStatus[rid] = s === 'NEUTRAL' ? 'BANNED' : s === 'BANNED' ? 'REQUIRED' : 'NEUTRAL';
-                    render();
-                };
-
-                window.renderReview = function() {
-                    const app = document.getElementById('app');
-                    app.innerHTML = `
-                        <div class="h-full bg-stone-900 p-4 flex flex-col">
-                            <h2 class="text-2xl text-amber-500 font-serif text-center mb-6">Casting du Village</h2>
-                            <div class="flex-1 overflow-y-auto grid grid-cols-4 gap-2 content-start">
-                                ${state.players.map(p => `
-                                    <div class="bg-stone-800 p-2 rounded flex flex-col items-center border border-stone-700">
-                                        ${RoleImg(p.roleId, 'w-8 h-8')}
-                                        <span class="text-[9px] text-center mt-1 text-stone-300 leading-tight">${getRole(p.roleId).name}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <div class="flex gap-4 mt-4">
-                                <button onclick="state.phase='SETUP';render()" class="flex-1 py-3 bg-stone-700 rounded text-stone-300 font-bold">Modifier</button>
-                                <button onclick="startGame()" class="flex-1 py-3 bg-green-700 text-white font-bold rounded shadow-lg">Lancer !</button>
-                            </div>
-                        </div>
-                    `;
-                };
-
-                window.startGame = function() {
-                    state.phase = 'GAME';
-                    state.turn = 1;
-                    state.isDay = false;
-                    state.historyLog = [];
-                    state.nightKills = [];
-                    state.witchUsed = {life:false, death:false};
-                    state.infectUsed = false;
-                    state.elderLives = 2;
-                    state.powersLost = false;
+                    // Ordre standard
+                    if (roleAlive('seer') && !powersLost) seq.push({ id: 'SEER', title: "Voyante", text: "La Voyante se réveille. Elle désigne un joueur dont elle veut connaître l'identité.", image: "🔮" });
                     
-                    if (state.players.some(p => p.roleId === 'angel')) state.isDay = true;
-                    state.currentSequence = buildSequences(state.turn);
-                    state.storyStep = 0;
-                    render();
-                };
+                    // Loups
+                    seq.push({ type: 'WOLVES', title: "Les Loups", text: "La Voyante se rendort. Les Loups-Garous se réveillent et choisissent une victime.", image: "🐺" });
+                    
+                    // Infect Père (si vivant et pas utilisé)
+                    if (roleAlive('infect_father') && !infectUsed) seq.push({ type: 'INFECT', title: "L'Infect Père", text: "L'Infect Père peut transformer la victime.", image: "🧟" });
+                    
+                    // Loup Blanc (1 nuit sur 2 : pairs)
+                    if (roleAlive('white_wolf') && turn % 2 === 0) seq.push({ type: 'WHITE', title: "Loup Blanc", text: "Le Loup Blanc se réveille seul. Il peut tuer un loup.", image: "🌫️" });
+                    
+                    // Sorcière
+                    if (roleAlive('witch') && !powersLost && (!witchUsed.life || !witchUsed.death)) seq.push({ type: 'WITCH', title: "Sorcière", text: "Les Loups se rendorment. La Sorcière se réveille.", image: "🧙" });
+                    
+                    // Renard
+                    if (roleAlive('fox') && !powersLost) seq.push({ id: 'FOX', title: "Renard", text: "Le Renard se réveille. Il sonde un groupe de 3 joueurs.", image: "🦊" });
+                    
+                    // Flûte
+                    if (roleAlive('flute_player')) seq.push({ id: 'FLUTE', title: "Flûte", text: "Le Joueur de Flûte se réveille. Il charme 2 joueurs.", image: "🎶" });
 
-                window.renderGame = function() {
-                    const app = document.getElementById('app');
-                    const step = state.currentSequence[state.storyStep];
-                    if (!step) return;
+                    seq.push({ id: 'END_NIGHT', title: "Fin Nuit", text: "Tout le monde se rendort...", image: "💤" });
+                } else {
+                    seq.push({ type: 'REVEAL', title: "Réveil", text: "C'est le matin, le village se réveille !", image: "☀️" });
+                    seq.push({ id: 'DEBATE', title: "Débat", text: "Le village débat pour trouver les coupables.", image: "🗣️" });
+                    seq.push({ type: 'VOTE', title: "Vote", text: "Le village vote pour éliminer un suspect.", image: "⚰️" });
+                    seq.push({ id: 'END_DAY', title: "Fin Jour", text: "La nuit tombe sur le village...", image: "🌙" });
+                }
+                return seq;
+            }, [phase, isDay, turn, players, powersLost, infectUsed, witchUsed]);
 
-                    let contentHtml = '';
+            const nextStep = () => {
+                if (storyStep < currentSequence.length - 1) {
+                    setStoryStep(s => s + 1);
+                } else {
+                    // Changement de phase jour/nuit
+                    if (isDay) {
+                        setTurn(t => t + 1);
+                        setIsDay(false);
+                    } else {
+                        setIsDay(true);
+                    }
+                    setStoryStep(0);
+                    setNightKills([]); // Reset des morts de la nuit pour le prochain tour
+                }
+                // Scroll top
+                const container = document.getElementById('story-container');
+                if(container) container.scrollTop = 0;
+            };
 
-                    // --- STEP LOGIC ---
-                    if (step.type === 'CUPID') {
-                        const lovers = state.players.filter(p => p.isLover);
-                        contentHtml = `
-                            <p class="text-center text-stone-400 text-sm mb-2">Sélectionnez 2 amoureux (${lovers.length}/2)</p>
-                            <div class="grid grid-cols-4 gap-2 mb-4">
-                                ${state.players.filter(p => p.isAlive).map(p => `
-                                    <div onclick="toggleLover('${p.uid}')" class="p-2 rounded flex flex-col items-center transition-all ${p.isLover ? 'bg-pink-900 border border-pink-500' : 'bg-stone-800 border border-stone-700'}">
-                                        ${RoleImg(p.roleId, 'w-8 h-8')}
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button onclick="nextStep()" ${lovers.length !== 2 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''} class="w-full py-3 bg-pink-700 rounded font-bold">Valider le Couple</button>
-                        `;
-                    } else if (step.type === 'WOLVES' || step.type === 'WHITE' || step.type === 'VOTE') {
-                        // Kill Selection
-                        const isWhite = step.type === 'WHITE';
-                        const isVote = step.type === 'VOTE';
-                        contentHtml = `
-                            <p class="text-center text-stone-400 text-sm mb-4">Cliquez pour éliminer</p>
-                            <div class="grid grid-cols-4 gap-2">
-                                ${state.players.filter(p => p.isAlive && (!isWhite || getRole(p.roleId).type === 'WOLF')).map(p => `
-                                    <div onclick="confirmKill('${p.uid}', '${isVote ? 'Vote du Village' : 'Nuit'}')" class="p-2 bg-stone-800 border border-stone-700 rounded flex flex-col items-center active:scale-95 transition-transform">
-                                        ${RoleImg(p.roleId)}
-                                        <span class="text-[9px] mt-1">${getRole(p.roleId).name}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button onclick="nextStep()" class="mt-6 text-stone-500 underline text-sm">Personne ne meurt</button>
-                        `;
-                    } else if (step.type === 'INFECT') {
-                        const vicId = state.nightKills[state.nightKills.length-1];
-                        const victim = state.players.find(p => p.uid === vicId);
+            // --- VIEW RENDERERS ---
+
+            if (phase === 'SETUP') {
+                return (
+                    <div className="h-full bg-stone-900 overflow-y-auto p-4 pb-24 text-center">
+                        <h1 className="text-3xl text-red-600 font-serif uppercase tracking-widest mb-1">Thiercelieux</h1>
+                        <p className="text-stone-500 text-xs mb-6">Assistant MJ v3.0 (Architecture Validée)</p>
                         
-                        if (!victim) {
-                            contentHtml = `<p class="text-center italic text-stone-500 mb-6">Aucune proie à infecter cette nuit.</p><button onclick="nextStep()" class="w-full py-3 bg-stone-700 rounded">Suivant</button>`;
-                        } else {
-                            contentHtml = `
-                                <div class="bg-red-900/30 p-4 rounded border border-red-900 mb-6 text-center">
-                                    <p class="text-red-400 text-xs uppercase font-bold">Victime</p>
-                                    <div class="flex items-center justify-center gap-2 mt-2">
-                                        ${RoleImg(victim.roleId)}
-                                        <span class="text-xl font-serif">${getRole(victim.roleId).name}</span>
-                                    </div>
-                                </div>
-                                <button onclick="infectVictim('${vicId}')" class="w-full py-4 bg-green-800 mb-3 rounded font-bold border border-green-600">🧟 Infecter (Devient Loup)</button>
-                                <button onclick="nextStep()" class="w-full py-4 bg-red-900 rounded font-bold border border-red-800">☠️ Laisser Mourir</button>
-                            `;
-                        }
-                    } else if (step.type === 'WITCH') {
-                        const vicId = state.nightKills[state.nightKills.length-1];
-                        const victim = state.players.find(p => p.uid === vicId);
-                        contentHtml = `
-                            <div class="mb-4 text-center">
-                                ${victim ? `<div class="inline-flex items-center gap-2 bg-stone-800 p-2 rounded border border-red-900"><span class="text-red-500 text-xs">Victime:</span> ${RoleImg(victim.roleId, 'w-6 h-6')}</div>` : '<span class="text-stone-500 italic">Aucune victime</span>'}
+                        <div className="bg-stone-800 p-4 rounded-xl mb-4 border border-stone-700">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-amber-500 font-bold">Joueurs</span>
+                                <span className="text-3xl font-serif">{playerCount}</span>
                             </div>
-                            <div class="grid grid-cols-2 gap-3 mb-4">
-                                <button onclick="witchHeal('${vicId}')" ${(!victim || state.witchUsed.life) ? 'disabled style="opacity:0.5"' : ''} class="p-3 bg-green-800 rounded font-bold border border-green-600">🧪 Sauver</button>
-                                <button onclick="this.disabled=true;document.getElementById('witch-kill').style.display='grid'" ${state.witchUsed.death ? 'disabled style="opacity:0.5"' : ''} class="p-3 bg-purple-800 rounded font-bold border border-purple-600">☠️ Tuer</button>
-                            </div>
-                            <div id="witch-kill" class="hidden grid-cols-4 gap-2 mb-4 bg-stone-800 p-2 rounded">
-                                ${state.players.filter(p => p.isAlive && p.uid !== vicId).map(p => `
-                                    <div onclick="witchKill('${p.uid}')" class="flex flex-col items-center">
-                                        ${RoleImg(p.roleId, 'w-8 h-8')}
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button onclick="nextStep()" class="w-full py-3 bg-stone-700 rounded text-stone-300">Ne rien faire</button>
-                        `;
-                    } else if (step.type === 'REVEAL') {
-                        contentHtml = `
-                            <div class="bg-stone-800 p-4 rounded mb-6 text-center">
-                                ${state.nightKills.length === 0 ? '<p class="text-green-500 font-bold">Le village se réveille complet !</p>' : 
-                                `<div><p class="text-red-500 mb-2 font-bold">Morts cette nuit :</p>${state.nightKills.map(uid => {
-                                    const p = state.players.find(x => x.uid === uid);
-                                    if(p.isAlive) killPlayer(uid, 'Nuit'); 
-                                    return `<div class="flex items-center justify-center gap-2 mb-1">${RoleImg(p.roleId, 'w-6 h-6')} ${getRole(p.roleId).name}</div>`;
-                                }).join('')}</div>`}
-                            </div>
-                            <button onclick="nextStep()" class="w-full py-4 bg-amber-600 font-bold rounded shadow text-xl">Continuer</button>
-                        `;
-                    } else {
-                        contentHtml = `
-                            <div class="text-8xl mb-6 text-center animate-bounce-slow">${step.image}</div>
-                            <button onclick="nextStep()" class="w-full py-4 bg-amber-700 hover:bg-amber-600 text-white font-serif font-bold text-xl rounded-lg shadow-xl">SUIVANT</button>
-                        `;
-                    }
-
-                    // Main Game Layout
-                    app.innerHTML = `
-                        <div class="h-full bg-stone-950 flex flex-col relative">
-                            <!-- HEADER -->
-                            <div class="h-16 flex items-center justify-between px-4 bg-stone-900 border-b border-stone-800">
-                                <div class="flex items-center gap-3">
-                                    <span class="text-2xl">${state.isDay ? '☀️' : '🌙'}</span>
-                                    <div class="leading-none">
-                                        <div class="text-[10px] text-stone-500 font-bold uppercase tracking-wider">${state.isDay ? 'JOURNÉE' : 'NUIT'} ${state.turn}</div>
-                                        <div class="text-amber-500 font-serif text-lg">${step.title}</div>
-                                    </div>
-                                </div>
-                                <button onclick="if(confirm('Quitter ?')) { state.phase='SETUP'; render(); }" class="text-2xl text-stone-600 hover:text-white">×</button>
-                            </div>
-
-                            <!-- STORY CONTENT -->
-                            <div class="flex-1 overflow-y-auto p-6 flex flex-col items-center bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')]">
-                                <div class="w-full max-w-md fade-in">
-                                    <p class="text-xl text-stone-300 text-center font-serif italic mb-8 leading-relaxed">"${step.text}"</p>
-                                    ${contentHtml}
-                                </div>
-                            </div>
-
-                            <!-- LOGS & DASHBOARD BTN -->
-                            <div class="h-40 bg-stone-900 border-t border-stone-800 flex flex-col">
-                                <div class="flex-1 overflow-y-auto p-2 font-mono text-[10px] text-stone-500 space-y-1">
-                                    ${state.historyLog.map(l => `<div class="border-l border-stone-700 pl-2">${l}</div>`).join('')}
-                                </div>
-                                <div class="flex border-t border-stone-800">
-                                    <button onclick="toggleDashboard()" class="flex-1 py-3 bg-stone-800 text-amber-500 font-bold flex items-center justify-center gap-2"><span>👥</span> Village (God Mode)</button>
-                                </div>
-                            </div>
-
-                            <!-- DASHBOARD OVERLAY -->
-                            <div id="dashboard" class="${state.showDashboard ? 'flex' : 'hidden'} absolute inset-0 bg-stone-950/95 z-50 flex-col p-4">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h2 class="text-xl font-serif text-amber-500">État du Village</h2>
-                                    <button onclick="toggleDashboard()" class="text-3xl">&times;</button>
-                                </div>
-                                <div class="flex-1 overflow-y-auto grid grid-cols-3 gap-2 content-start">
-                                    ${state.players.map(p => `
-                                        <div onclick="${p.isAlive ? `killPlayer('${p.uid}', 'MJ')` : `revivePlayer('${p.uid}')`}" class="p-2 border rounded flex flex-col items-center text-center cursor-pointer ${p.isAlive ? 'border-stone-600 bg-stone-800' : 'border-red-900 bg-red-900/20 opacity-60'}">
-                                            ${RoleImg(p.roleId)}
-                                            <span class="text-[9px] font-bold mt-1 text-stone-300">${getRole(p.roleId).name}</span>
-                                            <span class="text-[8px] px-1 rounded ${p.isAlive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}">${p.isAlive ? 'VIVANT' : 'MORT'}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
+                            <input type="range" min="8" max="28" value={playerCount} onChange={(e) => setPlayerCount(parseInt(e.target.value))} className="w-full accent-red-600" />
                         </div>
-                    `;
-                };
 
-                window.renderVictory = function() {
-                    const app = document.getElementById('app');
-                    app.innerHTML = `
-                        <div class="h-full flex flex-col items-center justify-center bg-stone-900 text-center p-6 fade-in">
-                            <div class="text-6xl mb-4">🏆</div>
-                            <h1 class="text-4xl font-serif text-amber-500 font-bold mb-2">VICTOIRE</h1>
-                            <h2 class="text-2xl font-bold mb-6">${state.victory.winner}</h2>
-                            <p class="text-stone-400 mb-10">${state.victory.reason}</p>
-                            <button onclick="state.phase='SETUP';render()" class="px-8 py-3 bg-stone-700 rounded-lg font-bold">Nouvelle Partie</button>
+                        <div className="flex gap-2 mb-6">
+                            {['FACILE', 'MOYENNE', 'DIFFICILE'].map(d => (
+                                <button key={d} onClick={() => setDifficulty(d)} className={`flex-1 py-3 rounded text-xs font-bold border border-stone-700 ${difficulty === d ? 'bg-red-700 text-white' : 'bg-stone-800 text-stone-500'}`}>
+                                    {d}
+                                </button>
+                            ))}
                         </div>
-                    `;
-                };
 
-                window.toggleLover = function(uid) {
-                    const p = state.players.find(x => x.uid === uid);
-                    const count = state.players.filter(x => x.isLover).length;
-                    
-                    if (p.isLover) {
-                        p.isLover = false; // Deselect
-                    } else {
-                        if (count < 2) {
-                            p.isLover = true; // Select if space
-                        } else {
-                            // Do nothing if already 2 selected and clicking a 3rd
-                        }
-                    }
-                    render();
-                };
+                        <div className="grid grid-cols-3 gap-2">
+                            {ROLES.filter(r => r.id !== 'lovers').map(r => {
+                                const s = roleStatus[r.id] || 'NEUTRAL';
+                                const bgCls = s === 'BANNED' ? 'bg-red-900/20 border-red-900' : s === 'REQUIRED' ? 'bg-green-900/20 border-green-600' : '';
+                                return (
+                                    <div key={r.id} onClick={() => cycleRoleStatus(r.id)} className={`relative bg-stone-800 p-2 rounded border border-stone-700 flex flex-col items-center gap-1 ${bgCls}`}>
+                                        <RoleImg rid={r.id} />
+                                        <span className="text-[9px] font-bold leading-tight">{r.name}</span>
+                                        {s === 'BANNED' && <div className="banned-cross">X</div>}
+                                        {s === 'REQUIRED' && <div className="required-dot"></div>}
+                                    </div>
+                                );
+                            })}
+                        </div>
 
-                window.confirmKill = function(uid, type) {
-                    const p = state.players.find(x => x.uid === uid);
-                    if (confirm(`Tuer ${getRole(p.roleId).name} ?`)) {
-                        if (type === 'Nuit') {
-                            // Logic Ancien 2 Vies
-                            if (p.roleId === 'elder' && state.elderLives > 1 && !state.isDay) {
-                                state.elderLives--;
-                                alert("L'Ancien a survécu !");
-                                log("L'Ancien a survécu à une attaque.");
-                            } else {
-                                state.nightKills.push(uid);
-                                log(`Attaque sur ${getRole(p.roleId).name}`);
-                            }
-                        } else {
-                            killPlayer(uid, type);
-                        }
-                        nextStep();
-                    }
-                };
-
-                window.infectVictim = function(uid) {
-                    const p = state.players.find(x => x.uid === uid);
-                    state.nightKills = state.nightKills.filter(id => id !== uid);
-                    p.roleId = 'simple_wolf';
-                    p.isAlive = true;
-                    state.infectUsed = true;
-                    log(`🐺 L'Infect Père a transformé une victime en Loup !`);
-                    nextStep();
-                };
-
-                window.witchHeal = function(uid) {
-                    state.nightKills = state.nightKills.filter(id => id !== uid);
-                    state.witchUsed.life = true;
-                    log("La Sorcière a utilisé la potion de VIE.");
-                    nextStep();
-                };
-
-                window.witchKill = function(uid) {
-                    state.nightKills.push(uid);
-                    state.witchUsed.death = true;
-                    log("La Sorcière a utilisé la potion de MORT.");
-                    nextStep();
-                };
-
-                window.toggleDashboard = function() {
-                    state.showDashboard = !state.showDashboard;
-                    render();
-                };
-
-                window.render = function() {
-                    if (state.phase === 'SETUP') renderSetup();
-                    else if (state.phase === 'REVIEW') renderReview();
-                    else if (state.phase === 'GAME') renderGame();
-                    else if (state.phase === 'VICTORY') renderVictory();
-                };
-
-                // Init
-                render();
-
-            } catch (err) {
-                // Catch synchronous errors in init
-                window.onerror(err.message, 'script', 0, 0, err);
+                        <div className="fixed bottom-0 left-0 w-full p-4 bg-gradient-to-t from-stone-950">
+                            <button onClick={generateGame} className="w-full py-4 bg-red-700 text-white font-serif text-2xl font-bold rounded-xl shadow-xl">GÉNÉRER</button>
+                        </div>
+                    </div>
+                );
             }
-        });
+
+            if (phase === 'REVIEW') {
+                return (
+                    <div className="h-full bg-stone-900 p-4 flex flex-col">
+                        <h2 className="text-2xl text-amber-500 font-serif text-center mb-6">Casting du Village</h2>
+                        <div className="flex-1 overflow-y-auto grid grid-cols-4 gap-2 content-start">
+                            {players.map(p => (
+                                <div key={p.uid} className="bg-stone-800 p-2 rounded flex flex-col items-center border border-stone-700">
+                                    <RoleImg rid={p.roleId} size="w-8 h-8" />
+                                    <span className="text-[9px] text-center mt-1 text-stone-300 leading-tight">{getRole(p.roleId).name}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex gap-4 mt-4">
+                            <button onClick={() => setPhase('SETUP')} className="flex-1 py-3 bg-stone-700 rounded text-stone-300 font-bold">Modifier</button>
+                            <button onClick={startGame} className="flex-1 py-3 bg-green-700 text-white font-bold rounded shadow-lg">Lancer !</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (phase === 'VICTORY') {
+                return (
+                    <div className="h-full flex flex-col items-center justify-center bg-stone-900 text-center p-6 fade-in">
+                        <div className="text-6xl mb-4">🏆</div>
+                        <h1 className="text-4xl font-serif text-amber-500 font-bold mb-2">VICTOIRE</h1>
+                        <h2 className="text-2xl font-bold mb-6">{victory.winner}</h2>
+                        <p className="text-stone-400 mb-10">{victory.reason}</p>
+                        <button onClick={() => setPhase('SETUP')} className="px-8 py-3 bg-stone-700 rounded-lg font-bold">Nouvelle Partie</button>
+                    </div>
+                );
+            }
+
+            // --- GAME RENDER ---
+            
+            const step = currentSequence[storyStep];
+            if (!step) return <div>Chargement...</div>;
+
+            return (
+                <div className="h-full bg-stone-950 flex flex-col relative">
+                    {/* HEADER */}
+                    <div className="h-16 flex items-center justify-between px-4 bg-stone-900 border-b border-stone-800">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">{isDay ? '☀️' : '🌙'}</span>
+                            <div className="leading-none">
+                                <div className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">{isDay ? 'JOURNÉE' : 'NUIT'} {turn}</div>
+                                <div className="text-amber-500 font-serif text-lg">{step.title}</div>
+                            </div>
+                        </div>
+                        <button onClick={() => { if(confirm('Quitter ?')) setPhase('SETUP'); }} className="text-2xl text-stone-600 hover:text-white">X</button>
+                    </div>
+
+                    {/* STORY CONTAINER */}
+                    <div id="story-container" className="flex-1 overflow-y-auto p-6 flex flex-col items-center bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')]">
+                        <div className="w-full max-w-md fade-in">
+                            <p className="text-xl text-stone-300 text-center font-serif italic mb-8 leading-relaxed">"{step.text}"</p>
+                            
+                            {/* DYNAMIC CONTENT */}
+                            {step.type === 'CUPID' && (
+                                <>
+                                    <p className="text-center text-stone-400 text-sm mb-2">
+                                        Sélectionnez 2 amoureux ({players.filter(p => p.isLover).length}/2)
+                                    </p>
+                                    <div className="grid grid-cols-4 gap-2 mb-4">
+                                        {players.filter(p => p.isAlive).map(p => (
+                                            <div key={p.uid} onClick={() => {
+                                                const newPlayers = [...players];
+                                                const target = newPlayers.find(x => x.uid === p.uid);
+                                                const count = newPlayers.filter(x => x.isLover).length;
+                                                if(target.isLover) target.isLover = false;
+                                                else if(count < 2) target.isLover = true;
+                                                setPlayers(newPlayers);
+                                            }} className={`p-2 rounded flex flex-col items-center transition-all ${p.isLover ? 'bg-pink-900 border border-pink-500' : 'bg-stone-800 border border-stone-700'}`}>
+                                                <RoleImg rid={p.roleId} size="w-8 h-8" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button 
+                                        onClick={nextStep} 
+                                        disabled={players.filter(p => p.isLover).length !== 2}
+                                        className="w-full py-3 bg-pink-700 rounded font-bold disabled:opacity-50"
+                                    >
+                                        Valider le Couple
+                                    </button>
+                                </>
+                            )}
+
+                            {(step.type === 'WOLVES' || step.type === 'WHITE' || step.type === 'VOTE') && (
+                                <>
+                                    <p className="text-center text-stone-400 text-sm mb-4">Cliquez pour éliminer</p>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {players.filter(p => p.isAlive && (step.type !== 'WHITE' || getRole(p.roleId).type === 'WOLF')).map(p => (
+                                            <div key={p.uid} onClick={() => {
+                                                if(confirm(`Tuer ${getRole(p.roleId).name} ?`)) {
+                                                    if (step.type === 'VOTE') {
+                                                        killPlayer(p.uid, 'Vote du Village');
+                                                        nextStep();
+                                                    } else {
+                                                        // Nuit
+                                                        if (p.roleId === 'elder' && elderLives > 1 && !isDay) {
+                                                            setElderLives(l => l - 1);
+                                                            alert("L'Ancien a survécu !");
+                                                            log("L'Ancien a survécu à une attaque.");
+                                                        } else {
+                                                            setNightKills(prev => [...prev, p.uid]);
+                                                            log(`Attaque sur ${getRole(p.roleId).name}`);
+                                                        }
+                                                        nextStep();
+                                                    }
+                                                }
+                                            }} className="p-2 bg-stone-800 border border-stone-700 rounded flex flex-col items-center active:scale-95 transition-transform">
+                                                <RoleImg rid={p.roleId} />
+                                                <span className="text-[9px] mt-1">{getRole(p.roleId).name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={nextStep} className="mt-6 text-stone-500 underline text-sm block mx-auto">Personne ne meurt</button>
+                                </>
+                            )}
+
+                            {step.type === 'INFECT' && (() => {
+                                const vicId = nightKills[nightKills.length - 1];
+                                const victim = players.find(p => p.uid === vicId);
+                                if (!victim) return (
+                                    <>
+                                        <p className="text-center italic text-stone-500 mb-6">Aucune victime à infecter.</p>
+                                        <button onClick={nextStep} className="w-full py-3 bg-stone-700 rounded">Suivant</button>
+                                    </>
+                                );
+                                return (
+                                    <>
+                                        <div className="bg-red-900/30 p-4 rounded border border-red-900 mb-6 text-center">
+                                            <p className="text-red-400 text-xs uppercase font-bold">Victime</p>
+                                            <div className="flex items-center justify-center gap-2 mt-2">
+                                                <RoleImg rid={victim.roleId} />
+                                                <span className="text-xl font-serif">{getRole(victim.roleId).name}</span>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => {
+                                            const newPlayers = players.map(p => p.uid === vicId ? { ...p, roleId: 'simple_wolf', isAlive: true } : p);
+                                            setPlayers(newPlayers);
+                                            setNightKills(prev => prev.filter(id => id !== vicId));
+                                            setInfectUsed(true);
+                                            log("🐺 L'Infect Père a transformé une victime en Loup !");
+                                            nextStep();
+                                        }} className="w-full py-4 bg-green-800 mb-3 rounded font-bold border border-green-600">🧟 Infecter (Devient Loup)</button>
+                                        <button onClick={nextStep} className="w-full py-4 bg-red-900 rounded font-bold border border-red-800">☠️ Laisser Mourir</button>
+                                    </>
+                                );
+                            })()}
+
+                            {step.type === 'WITCH' && (() => {
+                                const vicId = nightKills[nightKills.length - 1];
+                                const victim = players.find(p => p.uid === vicId);
+                                return (
+                                    <>
+                                        <div className="mb-4 text-center">
+                                            {victim ? (
+                                                <div className="inline-flex items-center gap-2 bg-stone-800 p-2 rounded border border-red-900">
+                                                    <span className="text-red-500 text-xs">Victime:</span> 
+                                                    <RoleImg rid={victim.roleId} size="w-6 h-6" />
+                                                </div>
+                                            ) : <span className="text-stone-500 italic">Aucune victime</span>}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3 mb-4">
+                                            <button 
+                                                onClick={() => {
+                                                    setNightKills(prev => prev.filter(id => id !== vicId));
+                                                    setWitchUsed(prev => ({ ...prev, life: true }));
+                                                    log("La Sorcière a utilisé la potion de VIE.");
+                                                    nextStep();
+                                                }}
+                                                disabled={!victim || witchUsed.life}
+                                                className="p-3 bg-green-800 rounded font-bold border border-green-600 disabled:opacity-50"
+                                            >🧪 Sauver</button>
+                                            <button 
+                                                id="btn-witch-kill"
+                                                onClick={(e) => {
+                                                    e.target.style.display='none';
+                                                    document.getElementById('witch-kill-grid').style.display='grid';
+                                                }}
+                                                disabled={witchUsed.death}
+                                                className="p-3 bg-purple-800 rounded font-bold border border-purple-600 disabled:opacity-50"
+                                            >☠️ Tuer</button>
+                                        </div>
+                                        <div id="witch-kill-grid" className="hidden grid-cols-4 gap-2 mb-4 bg-stone-800 p-2 rounded">
+                                            {players.filter(p => p.isAlive && p.uid !== vicId).map(p => (
+                                                <div key={p.uid} onClick={() => {
+                                                    setNightKills(prev => [...prev, p.uid]);
+                                                    setWitchUsed(prev => ({ ...prev, death: true }));
+                                                    log("La Sorcière a utilisé la potion de MORT.");
+                                                    nextStep();
+                                                }} className="flex flex-col items-center">
+                                                    <RoleImg rid={p.roleId} size="w-8 h-8" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button onClick={nextStep} className="w-full py-3 bg-stone-700 rounded text-stone-300">Ne rien faire</button>
+                                    </>
+                                );
+                            })()}
+
+                            {step.type === 'REVEAL' && (
+                                <>
+                                    <div className="bg-stone-800 p-4 rounded mb-6 text-center">
+                                        {nightKills.length === 0 ? <p className="text-green-500 font-bold">Le village se réveille complet !</p> : (
+                                            <div>
+                                                <p className="text-red-500 mb-2 font-bold">Morts cette nuit :</p>
+                                                {nightKills.map(uid => {
+                                                    const p = players.find(x => x.uid === uid);
+                                                    if (p.isAlive) killPlayer(uid, 'Nuit'); // Commit death
+                                                    return (
+                                                        <div key={uid} className="flex items-center justify-center gap-2 mb-1">
+                                                            <RoleImg rid={p.roleId} size="w-6 h-6" /> 
+                                                            {getRole(p.roleId).name}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button onClick={nextStep} className="w-full py-4 bg-amber-600 font-bold rounded shadow text-xl">Continuer</button>
+                                </>
+                            )}
+
+                            {!step.type && !step.id && (
+                                <>
+                                    <div className="text-8xl mb-6 text-center animate-bounce-slow">{step.image}</div>
+                                    <button onClick={nextStep} className="w-full py-4 bg-amber-700 hover:bg-amber-600 text-white font-serif font-bold text-xl rounded-lg shadow-xl">SUIVANT</button>
+                                </>
+                            )}
+
+                            {!step.type && step.id && (
+                                <>
+                                    <div className="text-8xl mb-6 text-center animate-bounce-slow">{step.image}</div>
+                                    <button onClick={nextStep} className="w-full py-4 bg-amber-700 hover:bg-amber-600 text-white font-serif font-bold text-xl rounded-lg shadow-xl">SUIVANT</button>
+                                </>
+                            )}
+
+                        </div>
+                    </div>
+
+                    {/* FOOTER / LOGS */}
+                    <div className="h-40 bg-stone-900 border-t border-stone-800 flex flex-col">
+                        <div className="flex-1 overflow-y-auto p-2 font-mono text-[10px] text-stone-500 space-y-1">
+                            {historyLog.map((l, i) => <div key={i} className="border-l border-stone-700 pl-2">{l}</div>)}
+                        </div>
+                        <div className="flex border-t border-stone-800">
+                            <button onClick={() => setShowDashboard(true)} className="flex-1 py-3 bg-stone-800 text-amber-500 font-bold flex items-center justify-center gap-2"><span>👥</span> Village (God Mode)</button>
+                        </div>
+                    </div>
+
+                    {/* DASHBOARD OVERLAY */}
+                    {showDashboard && (
+                        <div className="absolute inset-0 bg-stone-950/95 z-50 flex flex-col p-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-serif text-amber-500">État du Village</h2>
+                                <button onClick={() => setShowDashboard(false)} className="text-3xl">X</button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-2 content-start">
+                                {players.map(p => (
+                                    <div key={p.uid} onClick={() => p.isAlive ? killPlayer(p.uid, 'MJ') : revivePlayer(p.uid)} className={`p-2 border rounded flex flex-col items-center text-center cursor-pointer ${p.isAlive ? 'border-stone-600 bg-stone-800' : 'border-red-900 bg-red-900/20 opacity-60'}`}>
+                                        <RoleImg rid={p.roleId} />
+                                        <span className="text-[9px] font-bold mt-1 text-stone-300">{getRole(p.roleId).name}</span>
+                                        <span className={`text-[8px] px-1 rounded ${p.isAlive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>{p.isAlive ? 'VIVANT' : 'MORT'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
