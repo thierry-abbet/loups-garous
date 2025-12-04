@@ -32,31 +32,32 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
-        const VERSION = "v3.5";
+        const VERSION = "v3.6";
+        // Utilisation des URLs brutes GitHub pour éviter les problèmes de cache/chemin relatif
+        const IMG_BASE_URL = "https://raw.githubusercontent.com/thierry-abbet/loups-garous/main/public/images/";
 
         // --- DATA ---
-        // Chemins relatifs pointant vers le dossier public
         const ROLES = [
-            { id: 'cupid', name: 'Cupidon', type: 'VILLAGER', imageSrc: 'public/images/v-cupidon.png' },
-            { id: 'lovers', name: 'Les Amoureux', type: 'SPECIAL', imageSrc: 'public/images/v-cupidon.png' },
-            { id: 'seer', name: 'La Voyante', type: 'VILLAGER', imageSrc: 'public/images/v-voyante.png' },
-            { id: 'simple_wolf', name: 'Simple Loup-Garou', type: 'WOLF', imageSrc: 'public/images/l-simple.png' },
-            { id: 'infect_father', name: 'Infect Père des Loups', type: 'WOLF', imageSrc: 'public/images/l-infect.png' },
-            { id: 'big_bad_wolf', name: 'Grand Méchant Loup', type: 'WOLF', imageSrc: 'public/images/l-grand.png' },
-            { id: 'witch', name: 'La Sorcière', type: 'VILLAGER', imageSrc: 'public/images/v-sorciere.png' },
-            { id: 'hunter', name: 'Le Chasseur', type: 'VILLAGER', imageSrc: 'public/images/v-chasseur.png' },
-            { id: 'sisters', name: 'Les Deux Sœurs', type: 'VILLAGER', imageSrc: 'public/images/v-soeurs.png' },
-            { id: 'little_girl', name: 'La Petite Fille', type: 'VILLAGER', imageSrc: 'public/images/v-petitefille.png' },
-            { id: 'fox', name: 'Le Renard', type: 'VILLAGER', imageSrc: 'public/images/v-renard.png' },
-            { id: 'rusty_knight', name: 'Chevalier Épée Rouillée', type: 'VILLAGER', imageSrc: 'public/images/v-chevalier.png' },
-            { id: 'elder', name: "L'Ancien", type: 'VILLAGER', imageSrc: 'public/images/v-ancien.png' },
-            { id: 'bear_tamer', name: "Montreur d'Ours", type: 'VILLAGER', imageSrc: 'public/images/v-ours.png' },
-            { id: 'simple_villager', name: 'Simple Villageois', type: 'VILLAGER', imageSrc: 'public/images/v-simple.png' },
-            { id: 'wild_child', name: 'Enfant Sauvage', type: 'AMBIGUOUS', imageSrc: 'public/images/a-enfantsauvage.png' },
-            { id: 'dog_wolf', name: 'Chien-Loup', type: 'AMBIGUOUS', imageSrc: 'public/images/a-chienloup.png' },
-            { id: 'white_wolf', name: 'Loup-Garou Blanc', type: 'LONER', imageSrc: 'public/images/s-lgblanc.png' },
-            { id: 'flute_player', name: 'Joueur de Flûte', type: 'LONER', imageSrc: 'public/images/s-flute.png' },
-            { id: 'angel', name: "L'Ange", type: 'LONER', imageSrc: 'public/images/s-ange.png' }
+            { id: 'cupid', name: 'Cupidon', type: 'VILLAGER', imageSrc: 'v-cupidon.png' },
+            { id: 'lovers', name: 'Les Amoureux', type: 'SPECIAL', imageSrc: 'v-cupidon.png' },
+            { id: 'seer', name: 'La Voyante', type: 'VILLAGER', imageSrc: 'v-voyante.png' },
+            { id: 'simple_wolf', name: 'Simple Loup-Garou', type: 'WOLF', imageSrc: 'l-simple.png' },
+            { id: 'infect_father', name: 'Infect Père des Loups', type: 'WOLF', imageSrc: 'l-infect.png' },
+            { id: 'big_bad_wolf', name: 'Grand Méchant Loup', type: 'WOLF', imageSrc: 'l-grand.png' },
+            { id: 'witch', name: 'La Sorcière', type: 'VILLAGER', imageSrc: 'v-sorciere.png' },
+            { id: 'hunter', name: 'Le Chasseur', type: 'VILLAGER', imageSrc: 'v-chasseur.png' },
+            { id: 'sisters', name: 'Les Deux Sœurs', type: 'VILLAGER', imageSrc: 'v-soeurs.png' },
+            { id: 'little_girl', name: 'La Petite Fille', type: 'VILLAGER', imageSrc: 'v-petitefille.png' },
+            { id: 'fox', name: 'Le Renard', type: 'VILLAGER', imageSrc: 'v-renard.png' },
+            { id: 'rusty_knight', name: 'Chevalier Épée Rouillée', type: 'VILLAGER', imageSrc: 'v-chevalier.png' },
+            { id: 'elder', name: "L'Ancien", type: 'VILLAGER', imageSrc: 'v-ancien.png' },
+            { id: 'bear_tamer', name: "Montreur d'Ours", type: 'VILLAGER', imageSrc: 'v-ours.png' },
+            { id: 'simple_villager', name: 'Simple Villageois', type: 'VILLAGER', imageSrc: 'v-simple.png' },
+            { id: 'wild_child', name: 'Enfant Sauvage', type: 'AMBIGUOUS', imageSrc: 'a-enfantsauvage.png' },
+            { id: 'dog_wolf', name: 'Chien-Loup', type: 'AMBIGUOUS', imageSrc: 'a-chienloup.png' },
+            { id: 'white_wolf', name: 'Loup-Garou Blanc', type: 'LONER', imageSrc: 's-lgblanc.png' },
+            { id: 'flute_player', name: 'Joueur de Flûte', type: 'LONER', imageSrc: 's-flute.png' },
+            { id: 'angel', name: "L'Ange", type: 'LONER', imageSrc: 's-ange.png' }
         ];
 
         // --- COMPONENTS ---
@@ -65,7 +66,8 @@
             const r = ROLES.find(x => x.id === rid);
             if (!r) return null;
             
-            const imgSrc = r.imageSrc;
+            // Construction de l'URL absolue
+            const imgSrc = IMG_BASE_URL + r.imageSrc;
             
             // Fallback Colors
             let bgFallback = "bg-stone-700 border-stone-500";
@@ -83,7 +85,6 @@
                         className={`absolute inset-0 w-full h-full object-contain drop-shadow-md z-10`}
                         alt={r.name}
                         onError={(e) => {
-                            // Log discret pour debug seulement si erreur
                             console.warn(`Image loading failed: ${imgSrc}`);
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex'; // Show fallback
