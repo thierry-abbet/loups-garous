@@ -58,25 +58,28 @@
         // --- COMPONENTS ---
 
         const RoleImg = ({ rid, size = "w-12 h-12" }) => {
+            const [error, setError] = useState(false);
             const r = ROLES.find(x => x.id === rid);
+            
             if (!r) return null;
+            
             const shortName = r.name.substring(0, 2);
             
-            // Fallback si l'image ne charge pas (géré par le navigateur)
-            return (
-                <div className="flex flex-col items-center">
-                    <img 
-                        src={r.imageSrc} 
-                        className={`${size} object-contain drop-shadow-md`}
-                        onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                        }}
-                    />
-                    <div className={`${size} bg-stone-700 rounded-full hidden items-center justify-center border border-stone-500 text-xs font-bold text-white`}>
+            if (error) {
+                return (
+                    <div className={`${size} bg-stone-700 rounded-full flex items-center justify-center border border-stone-500 text-xs font-bold text-white shrink-0`}>
                         {shortName}
                     </div>
-                </div>
+                );
+            }
+
+            return (
+                <img 
+                    src={r.imageSrc} 
+                    className={`${size} object-contain drop-shadow-md`}
+                    onError={() => setError(true)}
+                    alt={r.name}
+                />
             );
         };
 
@@ -179,11 +182,6 @@
                     alert("LE CHASSEUR EST MORT ! IL DOIT TIRER !");
                     log("🔫 Le Chasseur tire avant de mourir.");
                 }
-
-                // On check la victoire après update state via useEffect ou callback, 
-                // ici on le fait un peu "dirty" mais ça marche car on a modifié la copie
-                // Pour être propre on le fera dans un useEffect dépendant de players, mais checkVictory a besoin du contexte
-                // On va le laisser pour le render suivant
             };
 
             // Effet pour checker la victoire quand les joueurs changent
@@ -212,12 +210,11 @@
                 let roster = [];
                 const required = ROLES.filter(r => roleStatus[r.id] === 'REQUIRED' && r.id !== 'lovers');
                 const bannedIds = new Set(ROLES.filter(r => roleStatus[r.id] === 'BANNED').map(r => r.id));
-                bannedIds.add('lovers'); // Toujours exclu du tirage (c'est une condition, pas un rôle)
+                bannedIds.add('lovers'); 
 
-                // 1. Ajouter les requis
                 required.forEach(r => {
                     roster.push(r.id);
-                    if (r.id === 'sisters') roster.push(r.id); // Les sœurs vont par 2
+                    if (r.id === 'sisters') roster.push(r.id); 
                 });
 
                 if (roster.length > playerCount) {
@@ -225,7 +222,6 @@
                     return;
                 }
 
-                // 2. Quota Loups (approx 1/4)
                 const maxWolves = Math.max(1, Math.floor(playerCount / 4));
                 let currentWolves = roster.filter(rid => getRole(rid).type === 'WOLF').length;
                 const wolfPool = ROLES.filter(r => (r.type === 'WOLF' || r.id === 'white_wolf') && !bannedIds.has(r.id) && !roster.includes(r.id));
@@ -241,7 +237,6 @@
                     currentWolves++;
                 }
 
-                // 3. Remplissage Spécial
                 const specialPool = ROLES.filter(r => r.type !== 'WOLF' && r.id !== 'white_wolf' && r.id !== 'simple_villager' && r.id !== 'lovers' && !bannedIds.has(r.id) && !roster.includes(r.id));
                 let specialCount = Math.floor((playerCount - roster.length) * (difficulty === 'FACILE' ? 0.3 : 0.7));
 
@@ -260,12 +255,10 @@
                     specialPool.splice(idx, 1);
                 }
 
-                // 4. Combler avec Simple Villageois
                 while (roster.length < playerCount) {
                     roster.push('simple_villager');
                 }
 
-                // 5. Mélanger
                 for (let i = roster.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [roster[i], roster[j]] = [roster[j], roster[i]];
@@ -290,7 +283,6 @@
                 setElderLives(2);
                 setPowersLost(false);
                 
-                // Si l'Ange est là, on commence par le Jour (Vote)
                 const hasAngel = players.some(p => p.roleId === 'angel');
                 setIsDay(hasAngel);
                 
@@ -309,31 +301,23 @@
                 if (!isDay) {
                     seq.push({ id: 'START_NIGHT', title: "La Nuit", text: "Le village s'endort...", image: "🌙" });
                     
-                    // Nuit 1 seulement
                     if (turn === 1) {
                         if (roleAlive('cupid')) seq.push({ type: 'CUPID', title: "Cupidon", text: "Cupidon se réveille. Il désigne 2 amoureux.", image: "💘" });
                         seq.push({ id: 'LOVERS', title: "Les Amoureux", text: "Cupidon se rendort. Les Amoureux se réveillent, se reconnaissent et se rendorment.", image: "❤️" });
                     }
 
-                    // Ordre standard
                     if (roleAlive('seer') && !powersLost) seq.push({ id: 'SEER', title: "Voyante", text: "La Voyante se réveille. Elle désigne un joueur dont elle veut connaître l'identité.", image: "🔮" });
                     
-                    // Loups
                     seq.push({ type: 'WOLVES', title: "Les Loups", text: "La Voyante se rendort. Les Loups-Garous se réveillent et choisissent une victime.", image: "🐺" });
                     
-                    // Infect Père (si vivant et pas utilisé)
                     if (roleAlive('infect_father') && !infectUsed) seq.push({ type: 'INFECT', title: "L'Infect Père", text: "L'Infect Père peut transformer la victime.", image: "🧟" });
                     
-                    // Loup Blanc (1 nuit sur 2 : pairs)
                     if (roleAlive('white_wolf') && turn % 2 === 0) seq.push({ type: 'WHITE', title: "Loup Blanc", text: "Le Loup Blanc se réveille seul. Il peut tuer un loup.", image: "🌫️" });
                     
-                    // Sorcière
                     if (roleAlive('witch') && !powersLost && (!witchUsed.life || !witchUsed.death)) seq.push({ type: 'WITCH', title: "Sorcière", text: "Les Loups se rendorment. La Sorcière se réveille.", image: "🧙" });
                     
-                    // Renard
                     if (roleAlive('fox') && !powersLost) seq.push({ id: 'FOX', title: "Renard", text: "Le Renard se réveille. Il sonde un groupe de 3 joueurs.", image: "🦊" });
                     
-                    // Flûte
                     if (roleAlive('flute_player')) seq.push({ id: 'FLUTE', title: "Flûte", text: "Le Joueur de Flûte se réveille. Il charme 2 joueurs.", image: "🎶" });
 
                     seq.push({ id: 'END_NIGHT', title: "Fin Nuit", text: "Tout le monde se rendort...", image: "💤" });
@@ -350,7 +334,6 @@
                 if (storyStep < currentSequence.length - 1) {
                     setStoryStep(s => s + 1);
                 } else {
-                    // Changement de phase jour/nuit
                     if (isDay) {
                         setTurn(t => t + 1);
                         setIsDay(false);
@@ -358,9 +341,8 @@
                         setIsDay(true);
                     }
                     setStoryStep(0);
-                    setNightKills([]); // Reset des morts de la nuit pour le prochain tour
+                    setNightKills([]); 
                 }
-                // Scroll top
                 const container = document.getElementById('story-container');
                 if(container) container.scrollTop = 0;
             };
@@ -371,7 +353,7 @@
                 return (
                     <div className="h-full bg-stone-900 overflow-y-auto p-4 pb-24 text-center">
                         <h1 className="text-3xl text-red-600 font-serif uppercase tracking-widest mb-1">Thiercelieux</h1>
-                        <p className="text-stone-500 text-xs mb-6">Assistant MJ v3.0 (Architecture Validée)</p>
+                        <p className="text-stone-500 text-xs mb-6">Assistant MJ v1.24 (Image Fix)</p>
                         
                         <div className="bg-stone-800 p-4 rounded-xl mb-4 border border-stone-700">
                             <div className="flex justify-between items-center mb-2">
