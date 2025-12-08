@@ -24,7 +24,6 @@
         .animate-bounce-slow { animation: bounce 3s infinite; }
         @keyframes bounce { 0%, 100% { transform: translateY(-5%); } 50% { transform: translateY(5%); } }
     </style>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root" class="h-screen w-screen"></div>
@@ -32,28 +31,30 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
+        const VERSION = "v4.0 (Universal Fix)";
+
         // --- DATA ---
         const ROLES = [
-            { id: 'cupid', name: 'Cupidon', type: 'VILLAGER', imageSrc: 'images/v-cupidon.png' },
-            { id: 'lovers', name: 'Les Amoureux', type: 'SPECIAL', imageSrc: 'images/v-cupidon.png' },
-            { id: 'seer', name: 'La Voyante', type: 'VILLAGER', imageSrc: 'images/v-voyante.png' },
-            { id: 'simple_wolf', name: 'Simple Loup-Garou', type: 'WOLF', imageSrc: 'images/l-simple.png' },
-            { id: 'infect_father', name: 'Infect Père des Loups', type: 'WOLF', imageSrc: 'images/l-infect.png' },
-            { id: 'big_bad_wolf', name: 'Grand Méchant Loup', type: 'WOLF', imageSrc: 'images/l-grand.png' },
-            { id: 'witch', name: 'La Sorcière', type: 'VILLAGER', imageSrc: 'images/v-sorciere.png' },
-            { id: 'hunter', name: 'Le Chasseur', type: 'VILLAGER', imageSrc: 'images/v-chasseur.png' },
-            { id: 'sisters', name: 'Les Deux Sœurs', type: 'VILLAGER', imageSrc: 'images/v-soeurs.png' },
-            { id: 'little_girl', name: 'La Petite Fille', type: 'VILLAGER', imageSrc: 'images/v-petitefille.png' },
-            { id: 'fox', name: 'Le Renard', type: 'VILLAGER', imageSrc: 'images/v-renard.png' },
-            { id: 'rusty_knight', name: 'Chevalier Épée Rouillée', type: 'VILLAGER', imageSrc: 'images/v-chevalier.png' },
-            { id: 'elder', name: "L'Ancien", type: 'VILLAGER', imageSrc: 'images/v-ancien.png' },
-            { id: 'bear_tamer', name: "Montreur d'Ours", type: 'VILLAGER', imageSrc: 'images/v-ours.png' },
-            { id: 'simple_villager', name: 'Simple Villageois', type: 'VILLAGER', imageSrc: 'images/v-simple.png' },
-            { id: 'wild_child', name: 'Enfant Sauvage', type: 'AMBIGUOUS', imageSrc: 'images/a-enfantsauvage.png' },
-            { id: 'dog_wolf', name: 'Chien-Loup', type: 'AMBIGUOUS', imageSrc: 'images/a-chienloup.png' },
-            { id: 'white_wolf', name: 'Loup-Garou Blanc', type: 'LONER', imageSrc: 'images/s-lgblanc.png' },
-            { id: 'flute_player', name: 'Joueur de Flûte', type: 'LONER', imageSrc: 'images/s-flute.png' },
-            { id: 'angel', name: "L'Ange", type: 'LONER', imageSrc: 'images/s-ange.png' }
+            { id: 'cupid', name: 'Cupidon', type: 'VILLAGER', imageSrc: 'v-cupidon.png', color: 'bg-pink-700' },
+            { id: 'lovers', name: 'Les Amoureux', type: 'SPECIAL', imageSrc: 'v-cupidon.png', color: 'bg-pink-500' },
+            { id: 'seer', name: 'La Voyante', type: 'VILLAGER', imageSrc: 'v-voyante.png', color: 'bg-purple-700' },
+            { id: 'simple_wolf', name: 'Simple Loup-Garou', type: 'WOLF', imageSrc: 'l-simple.png', color: 'bg-red-800' },
+            { id: 'infect_father', name: 'Infect Père des Loups', type: 'WOLF', imageSrc: 'l-infect.png', color: 'bg-red-900' },
+            { id: 'big_bad_wolf', name: 'Grand Méchant Loup', type: 'WOLF', imageSrc: 'l-grand.png', color: 'bg-red-950' },
+            { id: 'witch', name: 'La Sorcière', type: 'VILLAGER', imageSrc: 'v-sorciere.png', color: 'bg-orange-700' },
+            { id: 'hunter', name: 'Le Chasseur', type: 'VILLAGER', imageSrc: 'v-chasseur.png', color: 'bg-green-800' },
+            { id: 'sisters', name: 'Les Deux Sœurs', type: 'VILLAGER', imageSrc: 'v-soeurs.png', color: 'bg-indigo-400' },
+            { id: 'little_girl', name: 'La Petite Fille', type: 'VILLAGER', imageSrc: 'v-petitefille.png', color: 'bg-blue-300' },
+            { id: 'fox', name: 'Le Renard', type: 'VILLAGER', imageSrc: 'v-renard.png', color: 'bg-orange-600' },
+            { id: 'rusty_knight', name: 'Chevalier Épée Rouillée', type: 'VILLAGER', imageSrc: 'v-chevalier.png', color: 'bg-stone-500' },
+            { id: 'elder', name: "L'Ancien", type: 'VILLAGER', imageSrc: 'v-ancien.png', color: 'bg-yellow-800' },
+            { id: 'bear_tamer', name: "Montreur d'Ours", type: 'VILLAGER', imageSrc: 'v-ours.png', color: 'bg-yellow-900' },
+            { id: 'simple_villager', name: 'Simple Villageois', type: 'VILLAGER', imageSrc: 'v-simple.png', color: 'bg-green-600' },
+            { id: 'wild_child', name: 'Enfant Sauvage', type: 'AMBIGUOUS', imageSrc: 'a-enfantsauvage.png', color: 'bg-red-400' },
+            { id: 'dog_wolf', name: 'Chien-Loup', type: 'AMBIGUOUS', imageSrc: 'a-chienloup.png', color: 'bg-stone-600' },
+            { id: 'white_wolf', name: 'Loup-Garou Blanc', type: 'LONER', imageSrc: 's-lgblanc.png', color: 'bg-gray-200 text-black' },
+            { id: 'flute_player', name: 'Joueur de Flûte', type: 'LONER', imageSrc: 's-flute.png', color: 'bg-yellow-400 text-black' },
+            { id: 'angel', name: "L'Ange", type: 'LONER', imageSrc: 's-ange.png', color: 'bg-white text-black' }
         ];
 
         // --- COMPONENTS ---
@@ -63,20 +64,48 @@
             if (!r) return null;
             const shortName = r.name.substring(0, 2);
             
-            // Fallback si l'image ne charge pas (géré par le navigateur)
+            // Stratégie Multi-Paths : On essaie tout jusqu'à ce que ça marche
+            // 1. Relatif standard
+            // 2. Relatif public (structure vite)
+            // 3. Raw GitHub Main Public
+            // 4. Raw GitHub Main Root
+            const paths = [
+                `images/${r.imageSrc}`,
+                `public/images/${r.imageSrc}`,
+                `https://raw.githubusercontent.com/thierry-abbet/loups-garous/main/public/images/${r.imageSrc}`,
+                `https://raw.githubusercontent.com/thierry-abbet/loups-garous/main/images/${r.imageSrc}`
+            ];
+
+            const [srcIndex, setSrcIndex] = useState(0);
+            const [hasError, setHasError] = useState(false);
+
+            const handleError = () => {
+                if (srcIndex < paths.length - 1) {
+                    // Essaie le prochain chemin
+                    setSrcIndex(prev => prev + 1);
+                } else {
+                    // Tous les chemins ont échoué
+                    console.log(`❌ Echec total chargement image pour ${r.name}`);
+                    setHasError(true);
+                }
+            };
+
+            if (hasError) {
+                 return (
+                    <div className={`${size} rounded-full flex items-center justify-center border-2 border-stone-400 shadow-sm ${r.color || 'bg-stone-700'}`}>
+                        <span className="text-[10px] font-bold uppercase">{shortName}</span>
+                    </div>
+                );
+            }
+
             return (
                 <div className="flex flex-col items-center">
                     <img 
-                        src={r.imageSrc} 
+                        src={paths[srcIndex]} 
                         className={`${size} object-contain drop-shadow-md`}
-                        onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                        }}
+                        onError={handleError}
+                        alt={r.name}
                     />
-                    <div className={`${size} bg-stone-700 rounded-full hidden items-center justify-center border border-stone-500 text-xs font-bold text-white`}>
-                        {shortName}
-                    </div>
                 </div>
             );
         };
@@ -180,11 +209,6 @@
                     alert("LE CHASSEUR EST MORT ! IL DOIT TIRER !");
                     log("🔫 Le Chasseur tire avant de mourir.");
                 }
-
-                // On check la victoire après update state via useEffect ou callback, 
-                // ici on le fait un peu "dirty" mais ça marche car on a modifié la copie
-                // Pour être propre on le fera dans un useEffect dépendant de players, mais checkVictory a besoin du contexte
-                // On va le laisser pour le render suivant
             };
 
             // Effet pour checker la victoire quand les joueurs changent
@@ -372,7 +396,7 @@
                 return (
                     <div className="h-full bg-stone-900 overflow-y-auto p-4 pb-24 text-center">
                         <h1 className="text-3xl text-red-600 font-serif uppercase tracking-widest mb-1">Thiercelieux</h1>
-                        <p className="text-stone-500 text-xs mb-6">Assistant MJ v3.0 (Architecture Validée)</p>
+                        <p className="text-stone-500 text-xs mb-6">Assistant MJ {VERSION}</p>
                         
                         <div className="bg-stone-800 p-4 rounded-xl mb-4 border border-stone-700">
                             <div className="flex justify-between items-center mb-2">
@@ -688,6 +712,5 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
